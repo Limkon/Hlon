@@ -1,0 +1,24 @@
+{
+  "name": "simple-script-runner",
+  "version": "0.1.0",
+  "description": "A simple Node.js web system to manage and schedule .js and .sh scripts, similar to Qinglong panel.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3",
+    "uuid": "^9.0.1"
+  },
+  "author": "",
+  "license": "ISC",
+  "keywords": [
+    "nodejs",
+    "script-runner",
+    "scheduler",
+    "cron",
+    "automation"
+  ]
+}
