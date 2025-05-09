@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Script Runner</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2, h3 { color: #333; }
+        label { display: block; margin-top: 10px; margin-bottom: 5px; }
+        input[type="text"], select, textarea { width: 95%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        textarea { min-height: 100px; font-family: monospace; }
+        button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px; }
+        button:hover { background-color: #0056b3; }
+        button.delete { background-color: #dc3545; }
+        button.delete:hover { background-color: #c82333; }
+        button.run { background-color: #28a745; }
+        button.run:hover { background-color: #218838; }
+        ul { list-style-type: none; padding: 0; }
+        li { background-color: #f9f9f9; border: 1px solid #eee; padding: 10px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        pre { background-color: #333; color: #fff; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; max-height: 400px; overflow-y: auto; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <h1>Simple Script Runner</h1>
+
+    <div class="container">
+        <h2>Manage Scripts</h2>
+        <form id="scriptForm">
+            <input type="hidden" id="editScriptId">
+            <div>
+                <label for="scriptName">Script Name:</label>
+                <input type="text" id="scriptName" required>
+            </div>
+            <div>
+                <label for="scriptType">Script Type:</label>
+                <select id="scriptType">
+                    <option value="js">JavaScript (.js)</option>
+                    <option value="sh">Shell Script (.sh)</option>
+                </select>
+            </div>
+            <div>
+                <label for="scriptContent">Script Content:</label>
+                <textarea id="scriptContent" required></textarea>
+            </div>
+            <button type="submit" id="saveScriptButton">Add Script</button>
+            <button type="button" id="clearScriptFormButton" class="hidden">Cancel Edit</button>
+        </form>
+
+        <h3>Existing Scripts</h3>
+        <ul id="scriptsList"></ul>
+    </div>
+
+    <div class="container">
+        <h2>Manage Scheduled Tasks</h2>
+        <form id="taskForm">
+            <div>
+                <label for="taskScriptId">Select Script to Schedule:</label>
+                <select id="taskScriptId" required></select>
+            </div>
+            <div>
+                <label for="cronExpression">Cron Expression (e.g., `* * * * *` for every minute):</label>
+                <input type="text" id="cronExpression" placeholder="* * * * *" required>
+                 <small>Need help? <a href="https://crontab.guru/" target="_blank">Crontab Guru</a></small>
+            </div>
+            <button type="submit">Add Scheduled Task</button>
+        </form>
+
+        <h3>Scheduled Tasks</h3>
+        <ul id="tasksList"></ul>
+    </div>
+
+    <div class="container">
+        <h2>Script Output / Logs</h2>
+        <pre id="scriptOutput">Output will appear here...</pre>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
