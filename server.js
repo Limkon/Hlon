@@ -8,13 +8,13 @@ const { v4: uuidv4 } = require('uuid');
 const multer = require('multer'); // 引入 multer
 
 const app = express();
-const port = 8100;
+const port = 8100; // 端口已修改为 8100
 
 const BASH_EXECUTABLE = process.env.SR_BASH_PATH || '/bin/bash';
-const PYTHON_EXECUTABLE = process.env.SR_PYTHON_PATH || 'python3'; // 新增：Python 执行路径 (python 或 python3)
+const PYTHON_EXECUTABLE = process.env.SR_PYTHON_PATH || 'python3';
 
 const USER_SCRIPTS_DIR = path.join(__dirname, 'user_scripts');
-const UPLOADS_TMP_DIR = path.join(USER_SCRIPTS_DIR, 'tmp_uploads'); // 新增：临时上传目录
+const UPLOADS_TMP_DIR = path.join(USER_SCRIPTS_DIR, 'tmp_uploads'); // 临时上传目录
 const DATA_DIR = path.join(__dirname, 'data');
 const SCRIPTS_DB_PATH = path.join(DATA_DIR, 'scripts_db.json');
 const TASKS_DB_PATH = path.join(DATA_DIR, 'tasks_db.json');
@@ -29,15 +29,14 @@ const TASKS_DB_PATH = path.join(DATA_DIR, 'tasks_db.json');
 // Multer 配置：将上传的文件保存在临时目录
 const upload = multer({ dest: UPLOADS_TMP_DIR });
 
-app.use(express.json()); // 用于解析 application/json
-// express.urlencoded 用于解析表单数据，但 multer 会处理 multipart/form-data
+app.use(express.json());
 app.use(express.urlencoded({ extended: true })); 
 app.use(express.static('public'));
 
 let scripts = [];
 let scheduledTasks = [];
 
-// --- 数据持久化函数 (与之前版本相同) ---
+// --- 数据持久化函数 ---
 function saveScriptsToFile() {
     try {
         fs.writeFileSync(SCRIPTS_DB_PATH, JSON.stringify(scripts, null, 2), 'utf8');
@@ -69,10 +68,8 @@ function loadScriptsFromFile() {
         scripts = [];
     }
 }
-// --- /数据持久化函数 ---
 
 function getScriptFilePath(scriptId, scriptType) {
-    // 文件扩展名直接使用 scriptType (js, sh, py)
     return path.join(USER_SCRIPTS_DIR, `${scriptId}.${scriptType}`);
 }
 
@@ -93,7 +90,7 @@ function runScript(scriptId) {
         } else if (script.type === 'js') {
             command = 'node';
             args.push(scriptPath);
-        } else if (script.type === 'py') { // 新增对 python 的支持
+        } else if (script.type === 'py') {
             command = PYTHON_EXECUTABLE;
             args.push(scriptPath);
         } else {
@@ -169,39 +166,36 @@ function loadTasksFromFileAndSchedule() {
     }
 }
 
-// --- API Endpoints for Scripts ---
 app.get('/api/scripts', (req, res) => {
     res.json(scripts.map(s => ({ id: s.id, name: s.name, type: s.type, cronExpression: s.cronExpression })));
 });
 
-// 修改 POST /api/scripts 以处理文件上传和手动内容输入
 app.post('/api/scripts', upload.single('scriptFile'), (req, res) => {
     const { name: formName, type, content: manualContent } = req.body;
     const uploadedFile = req.file;
 
     if (!type) {
-        if (uploadedFile) fs.unlinkSync(uploadedFile.path); // 清理临时文件
+        if (uploadedFile) { try { fs.unlinkSync(uploadedFile.path); } catch(e){ console.error("清理临时上传文件失败(无类型):", e)} }
         return res.status(400).json({ message: '脚本类型为必填项。' });
     }
     if (!['js', 'sh', 'py'].includes(type)) {
-        if (uploadedFile) fs.unlinkSync(uploadedFile.path);
+        if (uploadedFile) { try { fs.unlinkSync(uploadedFile.path); } catch(e){ console.error("清理临时上传文件失败(类型无效):", e)} }
         return res.status(400).json({ message: '无效的脚本类型，必须是 "js", "sh" 或 "py"。' });
     }
 
     const name = formName || (uploadedFile ? uploadedFile.originalname : '未命名脚本');
     
-    if (!uploadedFile && typeof manualContent !== 'string') {
+    if (!uploadedFile && (typeof manualContent !== 'string' || manualContent.trim() === '')) {
+        // 如果上传了文件，即使内容为空也处理；如果没上传文件，则手动内容不能为空。
         return res.status(400).json({ message: '脚本内容或上传文件为必填项。' });
     }
-    // 如果同时提供了文件和手动内容，优先使用文件内容 (或者您可以定义其他逻辑)
-    // 这里我们假设如果 req.file 存在，就用它，否则用 manualContent
 
     const scriptId = uuidv4();
     const filePath = getScriptFilePath(scriptId, type);
 
     try {
         if (uploadedFile) {
-            fs.renameSync(uploadedFile.path, filePath); // 将临时文件移动到最终位置
+            fs.renameSync(uploadedFile.path, filePath);
             console.log(`上传的脚本文件已保存: ${filePath}`);
         } else {
             fs.writeFileSync(filePath, manualContent, 'utf8');
@@ -216,8 +210,8 @@ app.post('/api/scripts', upload.single('scriptFile'), (req, res) => {
 
     } catch (error) {
         console.error('创建脚本错误:', error);
-        if (uploadedFile && fs.existsSync(uploadedFile.path)) { // 如果出错且临时文件还在，尝试删除
-            try { fs.unlinkSync(uploadedFile.path); } catch (e) { console.error("清理临时上传文件失败:", e); }
+        if (uploadedFile && fs.existsSync(uploadedFile.path)) {
+            try { fs.unlinkSync(uploadedFile.path); } catch (e) { console.error("创建脚本错误后清理临时上传文件失败:", e); }
         }
         res.status(500).json({ message: '保存脚本文件失败。', error: error.message });
     }
@@ -234,34 +228,33 @@ app.get('/api/scripts/:id/content', (req, res) => {
     }
 });
 
-app.put('/api/scripts/:id', upload.single('scriptFile'), (req, res) => { // 允许更新时也上传文件替换内容
+app.put('/api/scripts/:id', upload.single('scriptFile'), (req, res) => {
     const scriptId = req.params.id;
-    const { name: formName, content: manualContent, type: formType } = req.body; // type 理论上不应在更新时改变，因为文件名和执行方式会变
+    const { name: formName, content: manualContent, type: formType } = req.body;
     const uploadedFile = req.file;
 
     const scriptIndex = scripts.findIndex(s => s.id === scriptId);
     if (scriptIndex === -1) {
-        if (uploadedFile) fs.unlinkSync(uploadedFile.path);
+        if (uploadedFile) { try {fs.unlinkSync(uploadedFile.path); } catch(e){ console.error("更新脚本时清理临时上传文件失败(脚本未找到):", e)} }
         return res.status(404).json({ message: '脚本未找到' });
     }
 
     const script = scripts[scriptIndex];
 
-    // 通常不建议在更新时改变脚本类型，因为它会改变文件扩展名和执行方式。
-    // 如果允许，需要删除旧文件，用新类型创建新文件。为简单起见，这里不允许更改类型。
     if (formType && formType !== script.type) {
-        if (uploadedFile) fs.unlinkSync(uploadedFile.path);
+        if (uploadedFile) { try {fs.unlinkSync(uploadedFile.path); } catch(e){ console.error("更新脚本时清理临时上传文件失败(类型不匹配):", e)} }
         return res.status(400).json({ message: `不允许修改脚本类型。当前类型: ${script.type}` });
     }
 
     try {
         if (uploadedFile) {
-            fs.renameSync(uploadedFile.path, script.filePath); // 替换现有文件
+            fs.renameSync(uploadedFile.path, script.filePath);
             console.log(`脚本文件已通过上传更新: ${script.filePath}`);
-        } else if (typeof manualContent === 'string') {
+        } else if (typeof manualContent === 'string') { // 允许只更新名称而不更新内容
             fs.writeFileSync(script.filePath, manualContent, 'utf8');
             console.log(`脚本内容已通过手动输入更新: ${script.filePath}`);
         }
+
 
         if (formName) {
             script.name = formName;
@@ -273,12 +266,11 @@ app.put('/api/scripts/:id', upload.single('scriptFile'), (req, res) => { // 允�
     } catch (error) {
         console.error('更新脚本错误:', error);
         if (uploadedFile && fs.existsSync(uploadedFile.path)) {
-            try { fs.unlinkSync(uploadedFile.path); } catch (e) { console.error("清理临时上传文件失败:", e); }
+            try { fs.unlinkSync(uploadedFile.path); } catch (e) { console.error("更新脚本错误后清理临时上传文件失败:", e); }
         }
         res.status(500).json({ message: '更新脚本文件失败。', error: error.message });
     }
 });
-
 
 app.delete('/api/scripts/:id', (req, res) => {
     const scriptId = req.params.id;
@@ -315,7 +307,6 @@ app.post('/api/scripts/:id/run', async (req, res) => {
     }
 });
 
-// --- API Endpoints for Scheduled Tasks (与之前版本相同，确保 saveTasksToFile 和 saveScriptsToFile 被正确调用) ---
 app.get('/api/tasks', (req, res) => {
     res.json(scheduledTasks.map(task => ({
         id: task.id, scriptId: task.scriptId,
@@ -364,14 +355,13 @@ app.delete('/api/tasks/:id', (req, res) => {
     res.status(200).json({ message: '定时任务已成功删除' });
 });
 
-// --- Server Start ---
 function startServer() {
     loadScriptsFromFile();
     loadTasksFromFileAndSchedule();
     app.listen(port, () => {
         console.log(`简易脚本运行器正在监听 http://localhost:${port}`);
         console.log(`将使用 Bash 执行器: ${BASH_EXECUTABLE}`);
-        console.log(`将使用 Python 执行器: ${PYTHON_EXECUTABLE}`); // 新增
+        console.log(`将使用 Python 执行器: ${PYTHON_EXECUTABLE}`);
         console.warn("数据将保存在JSON文件中。简单的错误处理和并发控制。");
     });
 }
