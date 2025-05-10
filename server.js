@@ -7,7 +7,7 @@ const cron = require('node-cron');
 const { v4: uuidv4 } = require('uuid'); // For generating unique IDs
 
 const app = express();
-const port = 3000;
+const port = 8100;
 
 const USER_SCRIPTS_DIR = path.join(__dirname, 'user_scripts');
 if (!fs.existsSync(USER_SCRIPTS_DIR)) {
