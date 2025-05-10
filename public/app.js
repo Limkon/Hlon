@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scriptNameInput = document.getElementById('scriptName');
     const scriptTypeInput = document.getElementById('scriptType');
     const scriptContentInput = document.getElementById('scriptContent');
+    const scriptFileInput = document.getElementById('scriptFile'); // 新增文件输入元素
     const saveScriptButton = document.getElementById('saveScriptButton');
     const clearScriptFormButton = document.getElementById('clearScriptFormButton');
     
@@ -62,15 +63,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = scriptNameInput.value;
         const type = scriptTypeInput.value;
         const content = scriptContentInput.value;
+        const file = scriptFileInput.files[0]; // 获取上传的文件
+
+        if (!type) {
+            alert("请选择脚本类型。");
+            return;
+        }
+        if (!file && !content.trim()) {
+            alert("请输入脚本内容或选择一个脚本文件上传。");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('name', name); // 脚本名称，后端会处理为空或使用文件名的情况
+        formData.append('type', type);
+
+        if (file) {
+            formData.append('scriptFile', file);
+        } else {
+            formData.append('content', content);
+        }
 
         const method = id ? 'PUT' : 'POST';
         const url = id ? `${API_BASE_URL}/api/scripts/${id}` : `${API_BASE_URL}/api/scripts`;
 
         try {
+            // 当使用 FormData 时，不需要手动设置 Content-Type header，浏览器会自动处理
             const response = await fetch(url, {
                 method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, type, content })
+                body: formData
             });
             const result = await response.json();
             if (!response.ok) {
@@ -88,8 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetScriptForm() {
         editScriptIdInput.value = '';
         scriptNameInput.value = '';
+        scriptTypeInput.value = ''; // 重置类型选择
         scriptContentInput.value = '';
-        saveScriptButton.textContent = '添加脚本'; // 保持按钮文本一致性
+        scriptFileInput.value = ''; // 清空文件选择
+        saveScriptButton.textContent = '添加/更新脚本';
         clearScriptFormButton.classList.add('hidden');
     }
 
@@ -104,12 +127,9 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/scripts/${scriptId}/run`, { method: 'POST' });
                 const result = await response.json();
-                 if (!response.ok) {
-                    throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
-                }
+                 if (!response.ok) throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
                 scriptOutput.textContent = result.output || '未收到输出。';
             } catch (error) {
-                console.error('运行脚本错误:', error);
                 scriptOutput.textContent = `运行脚本错误: ${error.message}`;
             }
         } else if (target.classList.contains('delete')) {
@@ -117,14 +137,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/scripts/${scriptId}`, { method: 'DELETE' });
                     const result = await response.json();
-                    if (!response.ok) {
-                        throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
-                    }
-                    scriptOutput.textContent = result.message; // 显示服务器返回的中文消息
+                    if (!response.ok) throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
+                    scriptOutput.textContent = result.message;
                     fetchScripts();
                     fetchTasks();
                 } catch (error) {
-                    console.error('删除脚本错误:', error);
                     scriptOutput.textContent = `删除脚本错误: ${error.message}`;
                 }
             }
@@ -132,35 +149,31 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/scripts/${scriptId}/content`);
                 const script = await response.json();
-                if (!response.ok) {
-                    throw new Error(script.message || `HTTP错误！状态: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(script.message || `HTTP错误！状态: ${response.status}`);
                 editScriptIdInput.value = script.id;
                 scriptNameInput.value = script.name;
                 scriptTypeInput.value = script.type;
                 scriptContentInput.value = script.content;
-                saveScriptButton.textContent = '更新脚本'; // 更新按钮文本
+                scriptFileInput.value = ''; // 编辑时清空文件选择，优先显示文本内容
+                saveScriptButton.textContent = '更新脚本';
                 clearScriptFormButton.classList.remove('hidden');
                 window.scrollTo(0,0);
             } catch (error) {
-                console.error('获取脚本内容以编辑时出错:', error);
                 scriptOutput.textContent = `获取脚本内容错误: ${error.message}`;
             }
         }
     });
-
+    
+    // --- 定时任务相关的JS代码 (与之前版本相同) ---
     async function fetchTasks() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/tasks`);
             const tasks = await response.json();
             renderTasks(tasks);
-        } catch (error)
-        {
-            console.error('获取定时任务列表错误:', error);
+        } catch (error) {
             scriptOutput.textContent = `获取定时任务列表错误: ${error.message}`;
         }
     }
-
     function renderTasks(tasks) {
         tasksList.innerHTML = '';
         tasks.forEach(task => {
@@ -172,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
             tasksList.appendChild(li);
         });
     }
-
     taskForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const scriptId = taskScriptIdSelect.value;
@@ -188,20 +200,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ scriptId, cronExpression: cron })
             });
             const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
             scriptOutput.textContent = `已为脚本 ${result.scriptName} 调度任务。`;
             cronExpressionInput.value = '';
             taskScriptIdSelect.value = '';
             fetchTasks();
-            fetchScripts(); // 刷新脚本列表以显示可能更新的 cron 表达式信息
+            fetchScripts();
         } catch (error) {
-            console.error('调度任务错误:', error);
             scriptOutput.textContent = `调度任务错误: ${error.message}`;
         }
     });
-
     tasksList.addEventListener('click', async (e) => {
         if (e.target.classList.contains('delete')) {
             const taskId = e.target.dataset.id;
@@ -209,14 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}`, { method: 'DELETE' });
                     const result = await response.json();
-                    if (!response.ok) {
-                        throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
-                    }
-                    scriptOutput.textContent = result.message; // 显示服务器返回的中文消息
+                    if (!response.ok) throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
+                    scriptOutput.textContent = result.message;
                     fetchTasks();
-                    fetchScripts(); // 刷新脚本列表
+                    fetchScripts();
                 } catch (error) {
-                    console.error('删除任务错误:', error);
                     scriptOutput.textContent = `删除任务错误: ${error.message}`;
                 }
             }
