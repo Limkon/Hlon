@@ -1,11 +1,11 @@
 {
-  "name": "simple-script-runner",
+  "name": "simple-script-runner-zh",
   "version": "0.1.0",
-  "description": "A simple Node.js web system to manage and schedule .js and .sh scripts, similar to Qinglong panel.",
+  "description": "一个简易的 Node.js 网页系统（中文界面），用于管理和调度 .js 及 .sh 脚本。",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"测试未定义\" && exit 1"
   },
   "dependencies": {
     "express": "^4.19.2",
@@ -19,6 +19,7 @@
     "script-runner",
     "scheduler",
     "cron",
-    "automation"
+    "automation",
+    "chinese"
   ]
 }
