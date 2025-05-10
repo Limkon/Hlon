@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, type, content }) // 'type' is only sent on POST
+                body: JSON.stringify({ name, type, content })
             });
             const result = await response.json();
             if (!response.ok) {
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         editScriptIdInput.value = '';
         scriptNameInput.value = '';
         scriptContentInput.value = '';
-        saveScriptButton.textContent = '添加脚本';
+        saveScriptButton.textContent = '添加脚本'; // 保持按钮文本一致性
         clearScriptFormButton.classList.add('hidden');
     }
 
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!response.ok) {
                         throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
                     }
-                    scriptOutput.textContent = result.message;
+                    scriptOutput.textContent = result.message; // 显示服务器返回的中文消息
                     fetchScripts();
                     fetchTasks();
                 } catch (error) {
@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 scriptNameInput.value = script.name;
                 scriptTypeInput.value = script.type;
                 scriptContentInput.value = script.content;
-                saveScriptButton.textContent = '更新脚本';
+                saveScriptButton.textContent = '更新脚本'; // 更新按钮文本
                 clearScriptFormButton.classList.remove('hidden');
                 window.scrollTo(0,0);
             } catch (error) {
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cronExpressionInput.value = '';
             taskScriptIdSelect.value = '';
             fetchTasks();
-            fetchScripts();
+            fetchScripts(); // 刷新脚本列表以显示可能更新的 cron 表达式信息
         } catch (error) {
             console.error('调度任务错误:', error);
             scriptOutput.textContent = `调度任务错误: ${error.message}`;
@@ -212,9 +212,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!response.ok) {
                         throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
                     }
-                    scriptOutput.textContent = result.message;
+                    scriptOutput.textContent = result.message; // 显示服务器返回的中文消息
                     fetchTasks();
-                    fetchScripts();
+                    fetchScripts(); // 刷新脚本列表
                 } catch (error) {
                     console.error('删除任务错误:', error);
                     scriptOutput.textContent = `删除任务错误: ${error.message}`;
@@ -223,6 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 初始加载数据
     fetchScripts();
     fetchTasks();
 });
