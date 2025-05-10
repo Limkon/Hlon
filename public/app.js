@@ -5,9 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const scriptNameInput = document.getElementById('scriptName');
     const scriptTypeInput = document.getElementById('scriptType');
     const scriptContentInput = document.getElementById('scriptContent');
-    const scriptFileInput = document.getElementById('scriptFile'); // 新增文件输入元素
+    const scriptFileInput = document.getElementById('scriptFile');
     const saveScriptButton = document.getElementById('saveScriptButton');
     const clearScriptFormButton = document.getElementById('clearScriptFormButton');
+    const toggleEditorButton = document.getElementById('toggleEditorButton');
     
     const scriptsList = document.getElementById('scriptsList');
     const taskForm = document.getElementById('taskForm');
@@ -17,6 +18,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const scriptOutput = document.getElementById('scriptOutput');
 
     const API_BASE_URL = '';
+
+    if (toggleEditorButton && scriptContentInput) {
+        toggleEditorButton.addEventListener('click', () => {
+            scriptContentInput.classList.toggle('expanded');
+            if (scriptContentInput.classList.contains('expanded')) {
+                toggleEditorButton.textContent = '收起代码编辑框';
+            } else {
+                toggleEditorButton.textContent = '展开代码编辑框';
+            }
+        });
+    }
 
     async function fetchScripts() {
         try {
@@ -63,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = scriptNameInput.value;
         const type = scriptTypeInput.value;
         const content = scriptContentInput.value;
-        const file = scriptFileInput.files[0]; // 获取上传的文件
+        const file = scriptFileInput.files[0];
 
         if (!type) {
             alert("请选择脚本类型。");
@@ -75,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const formData = new FormData();
-        formData.append('name', name); // 脚本名称，后端会处理为空或使用文件名的情况
+        formData.append('name', name);
         formData.append('type', type);
 
         if (file) {
@@ -88,15 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = id ? `${API_BASE_URL}/api/scripts/${id}` : `${API_BASE_URL}/api/scripts`;
 
         try {
-            // 当使用 FormData 时，不需要手动设置 Content-Type header，浏览器会自动处理
-            const response = await fetch(url, {
-                method: method,
-                body: formData
-            });
+            const response = await fetch(url, { method: method, body: formData });
             const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
             scriptOutput.textContent = id ? `脚本已更新: ${result.name}` : `脚本已添加: ${result.name}`;
             resetScriptForm();
             fetchScripts();
@@ -109,11 +115,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetScriptForm() {
         editScriptIdInput.value = '';
         scriptNameInput.value = '';
-        scriptTypeInput.value = ''; // 重置类型选择
+        scriptTypeInput.value = '';
         scriptContentInput.value = '';
-        scriptFileInput.value = ''; // 清空文件选择
+        scriptFileInput.value = '';
         saveScriptButton.textContent = '添加/更新脚本';
         clearScriptFormButton.classList.add('hidden');
+        if (scriptContentInput.classList.contains('expanded')) {
+            scriptContentInput.classList.remove('expanded');
+        }
+        if (toggleEditorButton) {
+             toggleEditorButton.textContent = '展开代码编辑框';
+        }
     }
 
     clearScriptFormButton.addEventListener('click', resetScriptForm);
@@ -127,11 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/scripts/${scriptId}/run`, { method: 'POST' });
                 const result = await response.json();
-                 if (!response.ok) throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
+                if (!response.ok) throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
                 scriptOutput.textContent = result.output || '未收到输出。';
-            } catch (error) {
-                scriptOutput.textContent = `运行脚本错误: ${error.message}`;
-            }
+            } catch (error) { scriptOutput.textContent = `运行脚本错误: ${error.message}`; }
         } else if (target.classList.contains('delete')) {
             if (confirm('您确定要删除此脚本及其关联的定时任务吗？')) {
                 try {
@@ -139,11 +149,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
                     scriptOutput.textContent = result.message;
-                    fetchScripts();
-                    fetchTasks();
-                } catch (error) {
-                    scriptOutput.textContent = `删除脚本错误: ${error.message}`;
-                }
+                    fetchScripts(); fetchTasks();
+                } catch (error) { scriptOutput.textContent = `删除脚本错误: ${error.message}`; }
             }
         } else if (target.classList.contains('edit-script')) {
             try {
@@ -154,25 +161,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 scriptNameInput.value = script.name;
                 scriptTypeInput.value = script.type;
                 scriptContentInput.value = script.content;
-                scriptFileInput.value = ''; // 编辑时清空文件选择，优先显示文本内容
+                scriptFileInput.value = '';
                 saveScriptButton.textContent = '更新脚本';
                 clearScriptFormButton.classList.remove('hidden');
+                if (!scriptContentInput.classList.contains('expanded') && toggleEditorButton) {
+                     scriptContentInput.classList.add('expanded');
+                     toggleEditorButton.textContent = '收起代码编辑框';
+                }
                 window.scrollTo(0,0);
-            } catch (error) {
-                scriptOutput.textContent = `获取脚本内容错误: ${error.message}`;
-            }
+            } catch (error) { scriptOutput.textContent = `获取脚本内容错误: ${error.message}`; }
         }
     });
     
-    // --- 定时任务相关的JS代码 (与之前版本相同) ---
     async function fetchTasks() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/tasks`);
             const tasks = await response.json();
             renderTasks(tasks);
-        } catch (error) {
-            scriptOutput.textContent = `获取定时任务列表错误: ${error.message}`;
-        }
+        } catch (error) { scriptOutput.textContent = `获取定时任务列表错误: ${error.message}`; }
     }
     function renderTasks(tasks) {
         tasksList.innerHTML = '';
@@ -189,26 +195,18 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const scriptId = taskScriptIdSelect.value;
         const cron = cronExpressionInput.value;
-        if (!scriptId) {
-            alert("请选择一个脚本。");
-            return;
-        }
+        if (!scriptId) { alert("请选择一个脚本。"); return; }
         try {
             const response = await fetch(`${API_BASE_URL}/api/tasks`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ scriptId, cronExpression: cron })
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
             scriptOutput.textContent = `已为脚本 ${result.scriptName} 调度任务。`;
-            cronExpressionInput.value = '';
-            taskScriptIdSelect.value = '';
-            fetchTasks();
-            fetchScripts();
-        } catch (error) {
-            scriptOutput.textContent = `调度任务错误: ${error.message}`;
-        }
+            cronExpressionInput.value = ''; taskScriptIdSelect.value = '';
+            fetchTasks(); fetchScripts();
+        } catch (error) { scriptOutput.textContent = `调度任务错误: ${error.message}`; }
     });
     tasksList.addEventListener('click', async (e) => {
         if (e.target.classList.contains('delete')) {
@@ -219,16 +217,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
                     scriptOutput.textContent = result.message;
-                    fetchTasks();
-                    fetchScripts();
-                } catch (error) {
-                    scriptOutput.textContent = `删除任务错误: ${error.message}`;
-                }
+                    fetchTasks(); fetchScripts();
+                } catch (error) { scriptOutput.textContent = `删除任务错误: ${error.message}`; }
             }
         }
     });
 
-    // 初始加载数据
     fetchScripts();
     fetchTasks();
 });
