@@ -15,9 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tasksList = document.getElementById('tasksList');
     const scriptOutput = document.getElementById('scriptOutput');
 
-    const API_BASE_URL = ''; // Assuming same origin
-
-    // --- Script Management ---
+    const API_BASE_URL = '';
 
     async function fetchScripts() {
         try {
@@ -26,8 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
             renderScripts(scripts);
             populateTaskScriptSelect(scripts);
         } catch (error) {
-            console.error('Error fetching scripts:', error);
-            scriptOutput.textContent = `Error fetching scripts: ${error.message}`;
+            console.error('获取脚本列表错误:', error);
+            scriptOutput.textContent = `获取脚本列表错误: ${error.message}`;
         }
     }
 
@@ -35,12 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
         scriptsList.innerHTML = '';
         scripts.forEach(script => {
             const li = document.createElement('li');
+            const cronInfo = script.cronExpression ? ` [已调度: ${script.cronExpression}]` : '';
             li.innerHTML = `
-                <span>${script.name} (${script.type}) ${script.cronExpression ? `[Scheduled: ${script.cronExpression}]` : ''}</span>
+                <span>${script.name} (${script.type})${cronInfo}</span>
                 <div>
-                    <button class="run" data-id="${script.id}">Run</button>
-                    <button data-id="${script.id}" class="edit-script">Edit</button>
-                    <button class="delete" data-id="${script.id}">Delete</button>
+                    <button class="run" data-id="${script.id}">运行</button>
+                    <button data-id="${script.id}" class="edit-script">编辑</button>
+                    <button class="delete" data-id="${script.id}">删除</button>
                 </div>
             `;
             scriptsList.appendChild(li);
@@ -48,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function populateTaskScriptSelect(scripts) {
-        taskScriptIdSelect.innerHTML = '<option value="">-- Select Script --</option>';
+        taskScriptIdSelect.innerHTML = '<option value="">-- 选择脚本 --</option>';
         scripts.forEach(script => {
             const option = document.createElement('option');
             option.value = script.id;
@@ -71,27 +70,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, type, content })
+                body: JSON.stringify({ name, type, content }) // 'type' is only sent on POST
             });
             const result = await response.json();
             if (!response.ok) {
-                throw new Error(result.message || `HTTP error! status: ${response.status}`);
+                throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
             }
-            scriptOutput.textContent = id ? `Script updated: ${result.name}` : `Script added: ${result.name}`;
+            scriptOutput.textContent = id ? `脚本已更新: ${result.name}` : `脚本已添加: ${result.name}`;
             resetScriptForm();
             fetchScripts();
         } catch (error) {
-            console.error('Error saving script:', error);
-            scriptOutput.textContent = `Error saving script: ${error.message}`;
+            console.error('保存脚本错误:', error);
+            scriptOutput.textContent = `保存脚本错误: ${error.message}`;
         }
     });
 
     function resetScriptForm() {
         editScriptIdInput.value = '';
         scriptNameInput.value = '';
-        // scriptTypeInput.value = 'js'; // Keep type or reset
         scriptContentInput.value = '';
-        saveScriptButton.textContent = 'Add Script';
+        saveScriptButton.textContent = '添加脚本';
         clearScriptFormButton.classList.add('hidden');
     }
 
@@ -102,32 +100,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const scriptId = target.dataset.id;
 
         if (target.classList.contains('run')) {
-            scriptOutput.textContent = `Running script ${scriptId}...`;
+            scriptOutput.textContent = `正在运行脚本 ${scriptId}...`;
             try {
                 const response = await fetch(`${API_BASE_URL}/api/scripts/${scriptId}/run`, { method: 'POST' });
                 const result = await response.json();
                  if (!response.ok) {
-                    throw new Error(result.message || `HTTP error! status: ${response.status}`);
+                    throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
                 }
-                scriptOutput.textContent = result.output || 'No output received.';
+                scriptOutput.textContent = result.output || '未收到输出。';
             } catch (error) {
-                console.error('Error running script:', error);
-                scriptOutput.textContent = `Error running script: ${error.message}`;
+                console.error('运行脚本错误:', error);
+                scriptOutput.textContent = `运行脚本错误: ${error.message}`;
             }
         } else if (target.classList.contains('delete')) {
-            if (confirm('Are you sure you want to delete this script and its scheduled tasks?')) {
+            if (confirm('您确定要删除此脚本及其关联的定时任务吗？')) {
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/scripts/${scriptId}`, { method: 'DELETE' });
                     const result = await response.json();
                     if (!response.ok) {
-                        throw new Error(result.message || `HTTP error! status: ${response.status}`);
+                        throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
                     }
                     scriptOutput.textContent = result.message;
                     fetchScripts();
-                    fetchTasks(); // Refresh tasks as associated tasks might be deleted
+                    fetchTasks();
                 } catch (error) {
-                    console.error('Error deleting script:', error);
-                    scriptOutput.textContent = `Error deleting script: ${error.message}`;
+                    console.error('删除脚本错误:', error);
+                    scriptOutput.textContent = `删除脚本错误: ${error.message}`;
                 }
             }
         } else if (target.classList.contains('edit-script')) {
@@ -135,33 +133,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch(`${API_BASE_URL}/api/scripts/${scriptId}/content`);
                 const script = await response.json();
                 if (!response.ok) {
-                    throw new Error(script.message || `HTTP error! status: ${response.status}`);
+                    throw new Error(script.message || `HTTP错误！状态: ${response.status}`);
                 }
                 editScriptIdInput.value = script.id;
                 scriptNameInput.value = script.name;
                 scriptTypeInput.value = script.type;
                 scriptContentInput.value = script.content;
-                saveScriptButton.textContent = 'Update Script';
+                saveScriptButton.textContent = '更新脚本';
                 clearScriptFormButton.classList.remove('hidden');
-                window.scrollTo(0,0); // Scroll to top to see the form
+                window.scrollTo(0,0);
             } catch (error) {
-                console.error('Error fetching script content for edit:', error);
-                scriptOutput.textContent = `Error fetching script content: ${error.message}`;
+                console.error('获取脚本内容以编辑时出错:', error);
+                scriptOutput.textContent = `获取脚本内容错误: ${error.message}`;
             }
         }
     });
-
-
-    // --- Task Management ---
 
     async function fetchTasks() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/tasks`);
             const tasks = await response.json();
             renderTasks(tasks);
-        } catch (error) {
-            console.error('Error fetching tasks:', error);
-            scriptOutput.textContent = `Error fetching tasks: ${error.message}`;
+        } catch (error)
+        {
+            console.error('获取定时任务列表错误:', error);
+            scriptOutput.textContent = `获取定时任务列表错误: ${error.message}`;
         }
     }
 
@@ -170,8 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tasks.forEach(task => {
             const li = document.createElement('li');
             li.innerHTML = `
-                <span>Script: "${task.scriptName}" (ID: ${task.scriptId}) - Cron: ${task.cronExpression}</span>
-                <button class="delete" data-id="${task.id}">Delete Task</button>
+                <span>脚本: "${task.scriptName}" (ID: ${task.scriptId}) - Cron: ${task.cronExpression}</span>
+                <button class="delete" data-id="${task.id}">删除任务</button>
             `;
             tasksList.appendChild(li);
         });
@@ -182,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const scriptId = taskScriptIdSelect.value;
         const cron = cronExpressionInput.value;
         if (!scriptId) {
-            alert("Please select a script.");
+            alert("请选择一个脚本。");
             return;
         }
         try {
@@ -193,41 +189,40 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const result = await response.json();
             if (!response.ok) {
-                throw new Error(result.message || `HTTP error! status: ${response.status}`);
+                throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
             }
-            scriptOutput.textContent = `Task scheduled for script ${result.scriptName}.`;
+            scriptOutput.textContent = `已为脚本 ${result.scriptName} 调度任务。`;
             cronExpressionInput.value = '';
             taskScriptIdSelect.value = '';
             fetchTasks();
-            fetchScripts(); // Refresh scripts to show updated cron info
+            fetchScripts();
         } catch (error) {
-            console.error('Error scheduling task:', error);
-            scriptOutput.textContent = `Error scheduling task: ${error.message}`;
+            console.error('调度任务错误:', error);
+            scriptOutput.textContent = `调度任务错误: ${error.message}`;
         }
     });
 
     tasksList.addEventListener('click', async (e) => {
         if (e.target.classList.contains('delete')) {
             const taskId = e.target.dataset.id;
-            if (confirm('Are you sure you want to delete this scheduled task?')) {
+            if (confirm('您确定要删除此定时任务吗？')) {
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}`, { method: 'DELETE' });
                     const result = await response.json();
                     if (!response.ok) {
-                        throw new Error(result.message || `HTTP error! status: ${response.status}`);
+                        throw new Error(result.message || `HTTP错误！状态: ${response.status}`);
                     }
                     scriptOutput.textContent = result.message;
                     fetchTasks();
-                    fetchScripts(); // Refresh scripts to show updated cron info
+                    fetchScripts();
                 } catch (error) {
-                    console.error('Error deleting task:', error);
-                    scriptOutput.textContent = `Error deleting task: ${error.message}`;
+                    console.error('删除任务错误:', error);
+                    scriptOutput.textContent = `删除任务错误: ${error.message}`;
                 }
             }
         }
     });
 
-    // Initial data load
     fetchScripts();
     fetchTasks();
 });
