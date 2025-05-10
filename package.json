@@ -1,7 +1,7 @@
 {
-  "name": "simple-script-runner-zh",
-  "version": "0.1.0",
-  "description": "一个简易的 Node.js 网页系统（中文界面），用于管理和调度 .js 及 .sh 脚本。",
+  "name": "simple-script-runner-zh-pro",
+  "version": "0.2.0",
+  "description": "一个简易的 Node.js 网页系统（中文界面，支持上传和Python），用于管理和调度脚本。",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
     "uuid": "^9.0.1"
   },
@@ -20,6 +21,8 @@
     "scheduler",
     "cron",
     "automation",
-    "chinese"
+    "chinese",
+    "python",
+    "upload"
   ]
 }
